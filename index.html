@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkTools — QR코드 & URL 단축 허브</title>
+  <meta name="description" content="QR코드 생성과 URL 단축을 한 곳에서. 빠르고 간편한 링크 도구 허브.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --clr-bg: #09090f;
+      --clr-surface: #12121e;
+      --clr-card: #181828;
+      --clr-border: rgba(255,255,255,0.07);
+      --clr-text: #f0f0ff;
+      --clr-muted: #8888aa;
+      --clr-qr-from: #6c63ff;
+      --clr-qr-to: #a78bfa;
+      --clr-url-from: #06b6d4;
+      --clr-url-to: #22d3ee;
+      --clr-accent: #7c6cff;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Outfit', sans-serif;
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      overflow-x: hidden;
+    }
+
+    /* ── Animated BG ── */
+    .bg-canvas {
+      position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none;
+    }
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.18;
+      animation: drift 14s ease-in-out infinite alternate;
+    }
+    .orb-1 { width: 600px; height: 600px; background: #6c63ff; top: -200px; left: -150px; animation-duration: 12s; }
+    .orb-2 { width: 500px; height: 500px; background: #06b6d4; bottom: -150px; right: -100px; animation-duration: 16s; }
+    .orb-3 { width: 350px; height: 350px; background: #a855f7; top: 40%; left: 40%; animation-duration: 10s; }
+
+    @keyframes drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(40px, 30px) scale(1.08); }
+    }
+
+    /* ── Grid noise overlay ── */
+    .bg-grid {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    /* ── Layout ── */
+    .page {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 20px;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 16px;
+    }
+    .logo-icon {
+      width: 52px; height: 52px; border-radius: 16px;
+      background: linear-gradient(135deg, #6c63ff, #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 24px rgba(108,99,255,0.4);
+    }
+    .logo-icon svg { width: 28px; height: 28px; fill: #fff; }
+
+    .site-name {
+      font-size: 2rem; font-weight: 800; letter-spacing: -0.5px;
+      background: linear-gradient(90deg, #e0d8ff, #a5f3fc);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      margin-bottom: 64px;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.78rem; font-weight: 600; letter-spacing: 2px; text-transform: uppercase;
+      color: var(--clr-accent);
+      background: rgba(108,99,255,0.12);
+      border: 1px solid rgba(108,99,255,0.25);
+      border-radius: 100px; padding: 6px 16px;
+      margin-bottom: 24px;
+    }
+    .hero-eyebrow span { width: 6px; height: 6px; border-radius: 50%; background: var(--clr-accent); display: block; animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.7)} }
+
+    .hero-title {
+      font-size: clamp(2.4rem, 6vw, 4.2rem);
+      font-weight: 900; line-height: 1.1; letter-spacing: -1.5px;
+      margin-bottom: 20px;
+    }
+    .hero-title .hl {
+      background: linear-gradient(90deg, #a78bfa, #67e8f9);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-sub {
+      font-size: 1.1rem; color: var(--clr-muted); font-weight: 400; max-width: 480px; margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* ── Cards ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 28px;
+      width: 100%; max-width: 760px;
+    }
+
+    .tool-card {
+      position: relative; overflow: hidden;
+      background: var(--clr-card);
+      border: 1px solid var(--clr-border);
+      border-radius: 28px;
+      padding: 40px 36px;
+      cursor: pointer;
+      text-decoration: none; color: inherit;
+      display: flex; flex-direction: column; align-items: flex-start; gap: 20px;
+      transition: transform 0.3s cubic-bezier(.25,.8,.25,1), box-shadow 0.3s ease, border-color 0.3s ease;
+    }
+    .tool-card::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: var(--card-glow);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      border-radius: inherit;
+    }
+    .tool-card:hover { transform: translateY(-8px); }
+    .tool-card:hover::before { opacity: 1; }
+
+    /* QR card */
+    .card-qr {
+      --card-glow: radial-gradient(ellipse at top left, rgba(108,99,255,0.12), transparent 70%);
+    }
+    .card-qr:hover { border-color: rgba(108,99,255,0.4); box-shadow: 0 24px 60px rgba(108,99,255,0.2); }
+
+    /* URL card */
+    .card-url {
+      --card-glow: radial-gradient(ellipse at top left, rgba(6,182,212,0.12), transparent 70%);
+    }
+    .card-url:hover { border-color: rgba(6,182,212,0.4); box-shadow: 0 24px 60px rgba(6,182,212,0.2); }
+
+    .card-icon-wrap {
+      width: 64px; height: 64px; border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .card-qr .card-icon-wrap {
+      background: linear-gradient(135deg, rgba(108,99,255,0.2), rgba(167,139,250,0.2));
+      border: 1px solid rgba(108,99,255,0.3);
+      box-shadow: 0 0 20px rgba(108,99,255,0.15);
+    }
+    .card-url .card-icon-wrap {
+      background: linear-gradient(135deg, rgba(6,182,212,0.2), rgba(34,211,238,0.2));
+      border: 1px solid rgba(6,182,212,0.3);
+      box-shadow: 0 0 20px rgba(6,182,212,0.15);
+    }
+    .card-icon-wrap svg { width: 32px; height: 32px; }
+
+    .card-content { flex: 1; }
+    .card-title {
+      font-size: 1.45rem; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.3px;
+    }
+    .card-qr .card-title { color: #c4b5fd; }
+    .card-url .card-title { color: #67e8f9; }
+
+    .card-desc {
+      font-size: 0.92rem; color: var(--clr-muted); line-height: 1.65;
+    }
+
+    .card-tags {
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .tag {
+      font-size: 0.72rem; font-weight: 600; letter-spacing: 0.5px;
+      border-radius: 100px; padding: 4px 12px;
+    }
+    .card-qr .tag { background: rgba(108,99,255,0.15); color: #a78bfa; border: 1px solid rgba(108,99,255,0.2); }
+    .card-url .tag { background: rgba(6,182,212,0.15); color: #22d3ee; border: 1px solid rgba(6,182,212,0.2); }
+
+    .card-cta {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.9rem; font-weight: 700;
+      padding: 12px 22px; border-radius: 12px; border: none; cursor: pointer;
+      transition: all 0.25s ease; width: 100%; justify-content: center;
+      margin-top: 4px;
+    }
+    .card-cta svg { width: 18px; height: 18px; transition: transform 0.25s ease; }
+    .card-cta:hover svg { transform: translateX(4px); }
+
+    .card-qr .card-cta {
+      background: linear-gradient(135deg, #6c63ff, #a78bfa);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(108,99,255,0.3);
+    }
+    .card-qr .card-cta:hover { box-shadow: 0 8px 30px rgba(108,99,255,0.5); transform: scale(1.02); }
+
+    .card-url .card-cta {
+      background: linear-gradient(135deg, #06b6d4, #22d3ee);
+      color: #001a20;
+      box-shadow: 0 4px 20px rgba(6,182,212,0.3);
+    }
+    .card-url .card-cta:hover { box-shadow: 0 8px 30px rgba(6,182,212,0.5); transform: scale(1.02); }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 72px;
+      text-align: center;
+      font-size: 0.8rem;
+      color: rgba(136,136,170,0.5);
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Shine animation on card ── */
+    .tool-card::after {
+      content: '';
+      position: absolute;
+      top: -50%; left: -75%;
+      width: 50%; height: 200%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+      transform: skewX(-20deg);
+      transition: left 0.6s ease;
+      pointer-events: none;
+    }
+    .tool-card:hover::after { left: 130%; }
+
+    @media (max-width: 540px) {
+      .hero-title { font-size: 2rem; }
+      .tool-card { padding: 28px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-canvas">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+  <div class="bg-grid"></div>
+
+  <div class="page">
+    <!-- Header -->
+    <header class="site-header">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 3h7v7H3V3zm1 1v5h5V4H4zm1 1h3v3H5V5zM14 3h7v7h-7V3zm1 1v5h5V4h-5zm1 1h3v3h-3V5zM3 14h7v7H3v-7zm1 1v5h5v-5H4zm1 1h3v3H5v-3zM14 14h2v2h-2v-2zm3 0h2v2h-2v-2zm-3 3h2v2h-2v-2zm3 0h2v2h-2v-2zm-6-6h2v2h-2v-2zm3 0h2v2h-2v-2zm-3 3h2v2h-2v-2zm6 0h2v2h-2v-2z"/>
+        </svg>
+      </div>
+      <span class="site-name">LinkTools</span>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-eyebrow">
+        <span></span>링크 유틸리티 허브
+      </div>
+      <h1 class="hero-title">
+        링크를 더 스마트하게.<br>
+        <span class="hl">QR코드 &amp; URL 단축</span>
+      </h1>
+      <p class="hero-sub">URL을 QR코드로 즉시 변환하거나, 긴 링크를 짧고 깔끔하게 단축하세요. 모든 기능이 무료로 제공됩니다.</p>
+    </section>
+
+    <!-- Tool Cards -->
+    <div class="cards-grid">
+
+      <!-- QR 코드 카드 -->
+      <a href="url2qr/index.html" class="tool-card card-qr" id="btn-qr" aria-label="QR코드 생성기로 이동">
+        <div class="card-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="3" width="7" height="7" rx="1" fill="#a78bfa"/>
+            <rect x="5" y="5" width="3" height="3" fill="#6c63ff"/>
+            <rect x="14" y="3" width="7" height="7" rx="1" fill="#a78bfa"/>
+            <rect x="16" y="5" width="3" height="3" fill="#6c63ff"/>
+            <rect x="3" y="14" width="7" height="7" rx="1" fill="#a78bfa"/>
+            <rect x="5" y="16" width="3" height="3" fill="#6c63ff"/>
+            <rect x="14" y="14" width="2" height="2" fill="#a78bfa"/>
+            <rect x="17" y="14" width="2" height="2" fill="#a78bfa"/>
+            <rect x="14" y="17" width="2" height="2" fill="#a78bfa"/>
+            <rect x="17" y="17" width="4" height="4" rx="1" fill="#6c63ff"/>
+          </svg>
+        </div>
+        <div class="card-content">
+          <div class="card-title">QR 코드 생성</div>
+          <p class="card-desc">URL을 입력하면 고화질 QR코드를 즉시 생성합니다. JPG 파일로 바로 다운로드할 수 있습니다.</p>
+        </div>
+        <div class="card-tags">
+          <span class="tag">무료</span>
+          <span class="tag">고화질 JPG</span>
+          <span class="tag">즉시 생성</span>
+        </div>
+        <button class="card-cta" onclick="event.preventDefault(); window.location.href='url2qr/index.html'">
+          QR코드 바로가기
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
+      </a>
+
+      <!-- URL 단축 카드 -->
+      <a href="urlShort/index.html" class="tool-card card-url" id="btn-url" aria-label="URL 단축기로 이동">
+        <div class="card-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="8" y1="12" x2="5" y2="12" stroke="#22d3ee" stroke-width="2.5" stroke-linecap="round"/>
+            <polyline points="7 9 4 12 7 15" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="card-content">
+          <div class="card-title">URL 단축</div>
+          <p class="card-desc">긴 URL을 짧고 간결한 링크로 변환합니다. 단축된 링크를 클립보드에 바로 복사하세요.</p>
+        </div>
+        <div class="card-tags">
+          <span class="tag">무료 API</span>
+          <span class="tag">원클릭 복사</span>
+          <span class="tag">간편 공유</span>
+        </div>
+        <button class="card-cta" onclick="event.preventDefault(); window.location.href='urlShort/index.html'">
+          URL단축 바로가기
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
+      </a>
+
+    </div>
+
+    <footer class="footer">
+      <p>© 2026 LinkTools — 무료 링크 유틸리티 서비스</p>
+    </footer>
+  </div>
+</body>
+</html>
